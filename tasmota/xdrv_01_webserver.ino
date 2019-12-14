@@ -585,7 +585,9 @@ void StartWebserver(int type, IPAddress ipweb)
       WebServer->on("/rs", HandleRestoreConfiguration);
       WebServer->on("/rt", HandleResetConfiguration);
       WebServer->on("/in", HandleInformation);
+#ifdef USE_PROMETHEUS
       WebServer->on("/metrics", HandleMetrics);
+#endif  // USE_PROMETHEUS
       XdrvCall(FUNC_WEB_ADD_HANDLER);
       XsnsCall(FUNC_WEB_ADD_HANDLER);
 #endif  // Not FIRMWARE_MINIMAL
@@ -1964,35 +1966,39 @@ void HandleRestoreConfiguration(void)
 
 /*-------------------------------------------------------------------------------------------*/
 
+#ifdef USE_PROMETHEUS
+#include "energy.h"
 void HandleMetrics(void)
 {
   if (!HttpCheckPriviledgedAccess()) { return; }
 
   AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_METRICS);
-
-  WSContentStart_P(S_METRICS);
   EnergyUsage u = Settings.energy_usage;
-  WSContentSend_P(PSTR("# HELP usage1_kWhtotal Total kWh used (counter 1).\n"));
-  WSContentSend_P(PSTR("# TYPE usage1_kWhtotal counter\n"));
-  WSContentSend_P(PSTR("usage1_kWhtotal %f\n"), (double)u.usage1_kWhtotal);
-  WSContentSend_P(PSTR("# HELP usage2_kWhtotal Total kWh used (counter 2).\n"));
-  WSContentSend_P(PSTR("# TYPE usage2_kWhtotal counter\n"));
-  WSContentSend_P(PSTR("usage2_kWhtotal %f\n"), (double)u.usage2_kWhtotal);
-  WSContentSend_P(PSTR("# HELP return1_kWhtotal Total kWh returned (counter 1).\n"));
-  WSContentSend_P(PSTR("# TYPE return1_kWhtotal counter\n"));
-  WSContentSend_P(PSTR("return1_kWhtotal %f\n"), (double)u.return1_kWhtotal);
-  WSContentSend_P(PSTR("# HELP return2_kWhtotal Total kWh returned (counter 2).\n"));
-  WSContentSend_P(PSTR("# TYPE return2_kWhtotal counter\n"));
-  WSContentSend_P(PSTR("return2_kWhtota l%f\n"), (double)u.return2_kWhtotal);
-  WSContentSend_P(PSTR("# HELP last_return_kWhtotal ???.\n"));
-  WSContentSend_P(PSTR("# TYPE last_return_kWhtotal gauge\n"));
-  WSContentSend_P(PSTR("last_return_kWhtotal %f\n"), (double)u.last_return_kWhtotal);
-  WSContentSend_P(PSTR("# HELP last_usage_kWhtotal ???.\n"));
-  WSContentSend_P(PSTR("# TYPE last_usage_kWhtotal gauge\n"));
-  WSContentSend_P(PSTR("last_usage_kWhtotal %f\n"), (double)u.last_usage_kWhtotal);
 
-  WSContentStop();
+  WSContentBegin(200, CT_PLAIN);
+
+  WSContentSend_P(PSTR("# TYPE usage1_kWhtotal counter\n"));
+  WSContentSend_P(PSTR("usage1_kWhtotal %u\n"), u.usage1_kWhtotal);
+  WSContentSend_P(PSTR("# TYPE usage2_kWhtotal counter\n"));
+  WSContentSend_P(PSTR("usage2_kWhtotal %u\n"), u.usage2_kWhtotal);
+  WSContentSend_P(PSTR("# TYPE return1_kWhtotal counter\n"));
+  WSContentSend_P(PSTR("return1_kWhtotal %u\n"), u.return1_kWhtotal);
+  WSContentSend_P(PSTR("# TYPE return2_kWhtotal counter\n"));
+  WSContentSend_P(PSTR("return2_kWhtotal %u\n"), u.return2_kWhtotal);
+  WSContentSend_P(PSTR("# TYPE last_return_kWhtotal gauge\n"));
+  WSContentSend_P(PSTR("last_return_kWhtotal %u\n"), u.last_return_kWhtotal);
+  WSContentSend_P(PSTR("# TYPE last_usage_kWhtotal gauge\n"));
+  WSContentSend_P(PSTR("last_usage_kWhtotal %u\n"), u.last_usage_kWhtotal);
+  WSContentSend_P(PSTR("kwHtoday %lu\n"), Settings.energy_kWhtoday);
+  WSContentSend_P(PSTR("kWhyesterday %lu\n"), Settings.energy_kWhyesterday);
+  WSContentSend_P(PSTR("poweronstate %u\n"), Settings.poweronstate);
+  WSContentSend_P(PSTR("daily %u\n"), (uint32_t)Energy.daily);
+  WSContentSend_P(PSTR("total %u\n"), (uint32_t)Energy.total);
+  WSContentSend_P(PSTR("kWhtoday %lu\n"), Energy.kWhtoday);
+
+  WSContentEnd();
 }
+#endif  // USE_PROMETHEUS
 
 /*-------------------------------------------------------------------------------------------*/
 
